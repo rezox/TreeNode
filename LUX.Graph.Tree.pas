@@ -6,43 +6,65 @@ uses LUX, LUX.Graph;
 
 type //$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$【型】
 
+     TTreeItem = class;
+     TTreeNode = class;
+
      //$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$【レコード】
 
      //$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$【クラス】
 
+     //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% TTreeNodeZero
+
+     TTreeItem = class( TNode )
+     private
+     protected
+       _Prev :TTreeNode;
+       _Next :TTreeNode;
+     public
+       constructor Create;
+     end;
+
      //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% TTreeNode
 
-     TTreeNode = class( TNode )
+     TTreeNode = class( TTreeItem )
      private
-       _UpdateL :Byte;
-       ///// メソッド
-       procedure AddChild( const Child_:TTreeNode );
-       procedure DelChild( const I_:Integer );
-       procedure ReduceChildren;
      protected
-       _Parent    :TNodeLink<TTreeNode>;
-       _Children  :TArray<TTreeNode>;
-       _ChildrenN :Integer;
+       _Paren    :TTreeNode;
+       _Order    :Integer;
+       _Childs   :TRangeArray<TTreeNode>;
+       _ChildsN  :Integer;
+       _OrderMax :Integer;
        ///// アクセス
-       function GetParent :TTreeNode;
-       procedure SetParent( const Parent_:TTreeNode );
+       function GetParen :TTreeNode;
+       procedure SetParen( const Paren_:TTreeNode );
        function GetOrder :Integer;
-       function GetChildren( const I_:Integer ) :TTreeNode;
-       procedure SetChildren( const I_:Integer; const Child_:TTreeNode );
+       procedure SetOrder( const Paren_:Integer );
+       function GetIsOrdered :Boolean;
+       function GetChilds( const I_:Integer ) :TTreeNode;
+       procedure SetChilds( const I_:Integer; const Child_:TTreeNode );
+       function GetZero :TTreeNode;
+       function GetHead :TTreeNode;
+       function GetTail :TTreeNode;
+       ///// メソッド
+       procedure FindTo( const Child_:TTreeNode ); overload;
+       procedure FindTo( const Order_:Integer   ); overload;
      public
        constructor Create; overload;
        constructor Create( const Parent_:TTreeNode ); overload;
-       procedure BeforeDestruction; override;
        destructor Destroy; override;
        ///// プロパティ
-       property Parent                       :TTreeNode read GetParent   write SetParent  ;
-       property Order                        :Integer   read GetOrder                     ;
-       property Children[ const I_:Integer ] :TTreeNode read GetChildren write SetChildren; default;
-       property ChildrenN                    :Integer   read _ChildrenN                   ;
+       property Paren                      :TTreeNode read GetParen   write SetParen ;
+       property Order                      :Integer   read GetOrder   write SetOrder ;
+       property IsOrdered                  :Boolean   read GetIsOrdered              ;
+       property Childs[ const I_:Integer ] :TTreeNode read GetChilds  write SetChilds; default;
+       property ChildsN                    :Integer   read   _ChildsN                ;
+       property Zero                       :TTreeNode read GetZero                   ;
+       property Head                       :TTreeNode read GetHead                   ;
+       property Tail                       :TTreeNode read GetTail                   ;
        ///// メソッド
-       procedure BeginUpdate;
-       procedure EndUpdate;
-       procedure DeleteChildren;
+       procedure JoinChild( const Child_:TTreeNode );
+       procedure LeavChild( const Child_:TTreeNode );
+       procedure DeleteChilds;
      end;
 
 //const //$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$【定数】
@@ -57,87 +79,124 @@ implementation //###############################################################
 
 //$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$【クラス】
 
-//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% TTreeNode
+//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% TTreeItem
 
 //&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&& private
 
-/////////////////////////////////////////////////////////////////////// メソッド
+//&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&& protected
 
-procedure TTreeNode.AddChild( const Child_:TTreeNode );
+//&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&& public
+
+constructor TTreeItem.Create;
 begin
-     _Children := _Children + [ Child_ ];
+     inherited;
 
-     Child_._Parent := TNodeLink<TTreeNode>.Create( Self, _ChildrenN );
-
-     Inc( _ChildrenN );
+     _Prev := TTreeNode( Self );
+     _Next := TTreeNode( Self );
 end;
 
-procedure TTreeNode.DelChild( const I_:Integer );
-begin
-     _Children[ I_ ]._Parent := nil;
+//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% TTreeNode
 
-     _Children[ I_ ] := nil;
-
-     if _UpdateL = 0 then ReduceChildren;
-end;
-
-procedure TTreeNode.ReduceChildren;
-var
-   P :TTreeNode;
-begin
-     _ChildrenN := 0;
-
-     for P in _Children do
-     begin
-          if Assigned( P ) then
-          begin
-               _Children[ _ChildrenN ] := P;
-
-               P._Parent.i := _ChildrenN;
-
-               Inc( _ChildrenN );
-          end;
-     end;
-
-     SetLength( _Children, _ChildrenN );
-end;
+//&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&& private
 
 //&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&& protected
 
 /////////////////////////////////////////////////////////////////////// アクセス
 
-function TTreeNode.GetParent :TTreeNode;
+function TTreeNode.GetParen :TTreeNode;
 begin
-     Result := _Parent;
+     Result := _Paren;
 end;
 
-procedure TTreeNode.SetParent( const Parent_:TTreeNode );
+procedure TTreeNode.SetParen( const Paren_:TTreeNode );
 begin
-     with _Parent do
-     begin
-          if Assigned( o ) then o.DelChild( i );
-     end;
+     if Assigned( _Paren ) then _Paren.LeavChild( Self );
 
-     if Assigned( Parent_ ) then Parent_.AddChild( Self );
+     if Assigned( Paren_ ) then Paren_.JoinChild( Self );
 end;
 
 function TTreeNode.GetOrder :Integer;
 begin
-     Result := _Parent.i;
+     if not IsOrdered then _Paren.FindTo( Self );
+
+     Result := _Order;
 end;
 
-function TTreeNode.GetChildren( const I_:Integer ) :TTreeNode;
+procedure TTreeNode.SetOrder( const Paren_:Integer );
 begin
-     Result := _Children[ I_ ];
+     { ToDo }
 end;
 
-procedure TTreeNode.SetChildren( const I_:Integer; const Child_:TTreeNode );
+function TTreeNode.GetIsOrdered :Boolean;
 begin
-     if Assigned( _Children[ I_ ] ) then _Children[ I_ ]._Parent := nil;
+     Result := ( _Order <= _Paren._OrderMax )
+           and ( _Paren._Childs[ _Order ] = Self );
+end;
 
-                  _Children[ I_ ] := Child_;
+function TTreeNode.GetChilds( const I_:Integer ) :TTreeNode;
+begin
+     if I_ > _OrderMax then FindTo( I_ );
 
-     if Assigned( _Children[ I_ ] ) then _Children[ I_ ]._Parent := TNodeLink<TTreeNode>.Create( Self, I_ );
+     Result := _Childs[ I_ ];
+end;
+
+procedure TTreeNode.SetChilds( const I_:Integer; const Child_:TTreeNode );
+begin
+     { ToDo }
+end;
+
+function TTreeNode.GetZero :TTreeNode;
+begin
+     Result := _Childs[ -1 ];
+end;
+
+function TTreeNode.GetHead :TTreeNode;
+begin
+     Result := Zero._Next;
+end;
+
+function TTreeNode.GetTail :TTreeNode;
+begin
+     Result := Zero._Prev;
+end;
+
+/////////////////////////////////////////////////////////////////////// メソッド
+
+procedure TTreeNode.FindTo( const Child_:TTreeNode );
+var
+   P :TTreeNode;
+begin
+     if _ChildsN-1 > _Childs.MaxI then _Childs.MaxI := _ChildsN-1;
+
+     P := _Childs[ _OrderMax ];
+
+     repeat
+           P := P._Next;
+
+           Inc( _OrderMax );
+
+           _Childs[ _OrderMax ] := P;  P._Order := _OrderMax;
+
+     until P = Child_;
+end;
+
+procedure TTreeNode.FindTo( const Order_:Integer );
+var
+   P :TTreeNode;
+   I :Integer;
+begin
+     if _ChildsN-1 > _Childs.MaxI then _Childs.MaxI := _ChildsN-1;
+
+     P := _Childs[ _OrderMax ];
+
+     for I := _OrderMax + 1 to Order_ do
+     begin
+           P := P._Next;
+
+           _Childs[ I ] := P;  P._Order := I;
+     end;
+
+     _OrderMax := Order_;
 end;
 
 //&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&& public
@@ -146,62 +205,79 @@ constructor TTreeNode.Create;
 begin
      inherited;
 
-     _Parent    := nil;
-     _Children  := [];
-     _ChildrenN := 0;
+     _Paren := nil;
+
+     _Childs.SetRange( -1 );
+     _ChildsN := 0;
+
+     _Childs[ -1 ] := TTreeNode( TTreeItem.Create );
+
+     _OrderMax := -1;
 end;
 
 constructor TTreeNode.Create( const Parent_:TTreeNode );
 begin
-     inherited Create;
+     Create;
 
-     _Children  := [];
-     _ChildrenN := 0;
-
-     Parent_.AddChild( Self );
-end;
-
-procedure TTreeNode.BeforeDestruction;
-begin
-     with _Parent do
-     begin
-          if Assigned( o ) then o.DelChild( i );
-     end;
-
-     DeleteChildren;
-
-     inherited;
+     Parent_.JoinChild( Self );
 end;
 
 destructor TTreeNode.Destroy;
 begin
+     if Assigned( _Paren ) then _Paren.LeavChild( Self );
+
+     DeleteChilds;
+
+     Zero.Free;
 
      inherited;
 end;
 
 /////////////////////////////////////////////////////////////////////// メソッド
 
-procedure TTreeNode.BeginUpdate;
-begin
-     Inc( _UpdateL );
-end;
-
-procedure TTreeNode.EndUpdate;
-begin
-     Dec( _UpdateL );
-
-     if _UpdateL = 0 then ReduceChildren;
-end;
-
-procedure TTreeNode.DeleteChildren;
+procedure TTreeNode.JoinChild( const Child_:TTreeNode );
 var
-   C :TTreeNode;
+   P0, P1, P2 :TTreeNode;
 begin
-     BeginUpdate;
+     P0 := Tail;
+     P1 := Child_;
+     P2 := Zero;
 
-     for C in _Children do C.Free;
+     P0._Next := P1;
+     P1._Prev := P0;
+     P1._Next := P2;
+     P2._Prev := P1;
 
-     EndUpdate;
+     P1._Paren := Self;
+
+     Inc( _ChildsN );
+end;
+
+procedure TTreeNode.LeavChild( const Child_:TTreeNode );
+var
+   P0, P1, P2 :TTreeNode;
+begin
+     P0 := Child_._Prev;
+     P1 := Child_      ;
+     P2 := Child_._Next;
+
+     P0._Next := P2;  P1._Prev := P1;
+     P2._Prev := P0;  P1._Next := P1;
+
+     if P1.IsOrdered then _OrderMax := P1._Order-1;
+
+     P1._Paren := nil;
+
+     Dec( _ChildsN );
+
+     if _ChildsN * 2 < _Childs.MaxI+1 then _Childs.MaxI := _ChildsN-1;
+end;
+
+procedure TTreeNode.DeleteChilds;
+var
+   N :Integer;
+begin
+     for N := 1 to _ChildsN do Tail.Free;
 end;
 
 //$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$【ルーチン】
