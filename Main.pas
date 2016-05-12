@@ -44,11 +44,16 @@ procedure TForm1.ShowTree;
      var
         I :Integer;
         P :TTreeViewItem;
+        S :String;
      begin
           P := TTreeViewItem.Create( Self );
 
           P.Parent := Parent_;
-          P.Text   := 'Order = ' + TreeNode_.Order.ToString + ' : '
+
+          if Assigned( TreeNode_.Paren ) then S := TreeNode_.Order.ToString
+                                         else S := '-';
+
+          P.Text   := 'Order = '   + S + ' : '
                     + 'ChildsN = ' + TreeNode_.ChildsN.ToString;
 
           with TreeNode_ do
@@ -78,7 +83,7 @@ begin
 
           while P.ChildsN > 0 do
           begin
-               if Random( 5 ) = 0 then Break;
+               if Random( 3 ) = 0 then Break;
 
                P := P.Childs[ Random( P.ChildsN ) ];
           end;
@@ -116,6 +121,8 @@ end;
 procedure TForm1.FormCreate(Sender: TObject);
 begin
      _Root := TTreeNode.Create;
+
+     ShowTree;
 end;
 
 procedure TForm1.FormDestroy(Sender: TObject);
