@@ -6,7 +6,8 @@ uses
   Main in 'Main.pas' {Form1},
   LUX in '_LIBRARY\LUXOPHIA\LUX\LUX.pas',
   LUX.Graph.Tree in '_LIBRARY\LUXOPHIA\LUX.Graph\LUX.Graph.Tree.pas',
-  LUX.Graph in '_LIBRARY\LUXOPHIA\LUX.Graph\LUX.Graph.pas';
+  LUX.Graph in '_LIBRARY\LUXOPHIA\LUX.Graph\LUX.Graph.pas',
+  Core in 'Core.pas';
 
 {$R *.res}
 

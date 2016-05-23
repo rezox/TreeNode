@@ -309,6 +309,7 @@
         <DCCReference Include="_LIBRARY\LUXOPHIA\LUX\LUX.pas"/>
         <DCCReference Include="_LIBRARY\LUXOPHIA\LUX.Graph\LUX.Graph.Tree.pas"/>
         <DCCReference Include="_LIBRARY\LUXOPHIA\LUX.Graph\LUX.Graph.pas"/>
+        <DCCReference Include="Core.pas"/>
         <BuildConfiguration Include="Release">
             <Key>Cfg_2</Key>
             <CfgParent>Base</CfgParent>
@@ -336,6 +337,12 @@
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
+                <DeployFile LocalName="Win32\Debug\TreeNode.exe" Configuration="Debug" Class="ProjectOutput">
+                    <Platform Name="Win32">
+                        <RemoteName>TreeNode.exe</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
                 <DeployFile LocalName="Win64\Debug\TreeNode.exe" Configuration="Debug" Class="ProjectOutput">
                     <Platform Name="Win64">
                         <RemoteName>TreeNode.exe</RemoteName>
@@ -354,12 +361,6 @@
                 </DeployFile>
                 <DeployFile LocalName="$(BDS)\Redist\osx32\libcgsqlite3.dylib" Class="DependencyModule">
                     <Platform Name="OSX32">
-                        <Overwrite>true</Overwrite>
-                    </Platform>
-                </DeployFile>
-                <DeployFile LocalName="Win32\Debug\TreeNode.exe" Configuration="Debug" Class="ProjectOutput">
-                    <Platform Name="Win32">
-                        <RemoteName>TreeNode.exe</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
